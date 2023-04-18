@@ -13,17 +13,9 @@ RLOOP   TD       INDEV   .TEST INPUT DEVICE
         JEQ     CMPINST   .If end of line '\n', goto write
         J       RLOOP
 
-WRITE   LDX       #0
-WLOOP   TD      OUTDEV  .TEST OUTPUT DEVICE
-        JEQ     WLOOP   .LOOP UNTIL OUTPUT DEVICE is READY
-        LDCH   BUFFER,X    .LOAD DATA -> A Register
-        WD       OUTDEV  .WRITE ONE BYTE -> OUTPUT DEVICE
-        TIX     BUFLEN
-        JLT       WLOOP
-
 WRITEF  LDX     #0
 FLOOP   TD      OUTDEV
-        JEQ     WLOOP   .LOOP UNTIL OUTPUT DEVICE is READY
+        JEQ     FLOOP   .LOOP UNTIL OUTPUT DEVICE is READY
         LDCH    cFULL,X .LOAD cFULL -> A Register
         WD      OUTDEV  .WRITE ONE BYTE -> OUTPUT DEVICE
         TIX     #4
@@ -34,7 +26,7 @@ FLOOP   TD      OUTDEV
 
 WRITEN  LDX     #0
 NLOOP   TD      OUTDEV
-        JEQ     WLOOP    .LOOP UNTIL OUTPUT DEVICE is READY
+        JEQ     NLOOP    .LOOP UNTIL OUTPUT DEVICE is READY
         LDCH    cNONE,X  .LOAD cNONE -> A Register
         WD      OUTDEV  .WRITE ONE BYTE -> OUTPUT DEVICE
         TIX     #4
@@ -247,7 +239,7 @@ nosetF
 
         +JSUB   delete
 
-        +JSUB   pop         .pop it self so we can print it out parent(current)
+        +JSUB   pop         .pop parent(current)
         STA     tmpL
         +JSUB   pop
         STA     tmpA        .real parent -> tmpA
@@ -307,9 +299,6 @@ RETFOUND
         STA     CNT
         J	WRITEN          .NOT FOUND -> print NONE
 FOUND
-        LDA	#0              . FLAG = 0
-        STA	FLAG
-
         J	WRITEC          . WRITE C
 
 WRITEC  LDX     #0
@@ -366,13 +355,8 @@ find
         LDX	tmpA            . Tree[x] == wFIND?
         LDCH	TREE,X
         COMP	wFIND
-        JEQ	FLAGONE
-        J       NXT
-FLAGONE
-        J	FOUND
-        LDA	#1              . if FOUND, FLAG = TRUE  
-        STA	FLAG
-NXT
+        JEQ	FOUND           .FOUNDED! Jump -> FOUND label
+	
         LDA	tmpA
         +JSUB   push        .push parent itself so that load parent after traversing right child
         LDA     tmpL
@@ -384,7 +368,7 @@ NXT
 
         +JSUB   find
 
-        +JSUB   pop         .pop it self so we can print it out parent(current)
+        +JSUB   pop         .pop parent(current)
         STA   tmpL
         +JSUB   pop
         STA   tmpA        .real parent -> tmpA   
