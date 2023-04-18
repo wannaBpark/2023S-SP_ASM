@@ -1,5 +1,4 @@
-main    
-        LDA     #gap
+main    LDA     #gap
         +JSUB   stinit
 READ    LDX     #0
 RLOOP   TD       INDEV   .TEST INPUT DEVICE
@@ -71,17 +70,24 @@ CMPINP  LDCH   BUFFER,X    .Buffer[x] -> A register
         JGT     READ
         TIX     #6
         JLT     CMPINP      . not COMPARED ALL YET -> loop again
-        
-        LDA     TSIZE       . if TSIZE == 15 ???
-        COMP   MAXSIZE        
-        JEQ     WRITEF      . WRITE "FULL"
 
-        LDCH   BUFFER,X    . A regsiter = Buffer[++x]
-        LDX     TSIZE       . TMP -> Tree[X = Tsize]
-        STCH   TREE,X
+        LDCH    BUFFER,X    . A regsiter = Buffer[++x] 
+        LDX     TSIZE       . DATA = Buffer[++x], store it.
+        STCH	DATA
         TIX     TSIZE       . Tsize++
         STX     TSIZE
-        J       READ
+        J	addinp
+
+addinp  LDX	#0          . while (x++ < 15)
+addloop LDCH	TREE,X      . Tree[x] == NULL ?    
+        COMP	#0
+        JEQ	store          
+        TIX	#15
+        JLT	addloop     . x=15, NULL not FOUND! -> Write "FULL"
+        J	WRITEF
+store   LDCH	DATA        . if Tree[x] == NULL, store DATA
+        STCH	TREE,X
+        J	READ
 
 CMPLIST LDCH   BUFFER,X    .Buffer[x] -> A register
         STA     TMP         .A register ->TMP
@@ -91,10 +97,7 @@ CMPLIST LDCH   BUFFER,X    .Buffer[x] -> A register
         JGT     READ
         TIX     #4
         JLT     CMPLIST      . not COMPARED ALL YET -> loop again
-        
-        LDA     TSIZE       . if TSIZE == 0 ???
-        COMP   #0        
-        JEQ     READ        . Null tree -> goto READ
+
         LDA     #0
         JSUB   porder      . call POST_ORDER
 
@@ -102,16 +105,25 @@ CMPLIST LDCH   BUFFER,X    .Buffer[x] -> A register
         STA	CNT
         J       READ        . back to main
 
-porder  
-        COMP   TSIZE       . if A >= TSIZE, return;
-        JEQ   exitP
-        JGT   exitP
+chknull
+        STA	TMP
+        LDX	TMP
+        LDCH	TREE,X
+        COMP	NULL
+        LDA	TMP
+        RSUB
+porder
+        COMP	#14         . Index > TSIZE = 15, exit
+        JGT	exitP
+
+        STL	tmpNL       . if Tree[A] == NULL, exit
+        JSUB    chknull
+        LDL	tmpNL
+        JEQ     exitP
 
         STA     tmpA
         STL     tmpL
 
-        .+JSUB   print       .printf(A)
-        .if this is delete node T register ->1
         +JSUB   push        .push A
         LDA     tmpL
         +JSUB   push        .push L
@@ -141,8 +153,6 @@ porder
         +JSUB   pop
         STA   tmpA        .real parent -> tmpA
 
-        . delete 
-        . T register -> 0 if this is Delete Node
         +JSUB   print
 
         LDL     tmpL
@@ -192,9 +202,13 @@ CMPDLT  LDCH    BUFFER,X    .Buffer[x] -> A register
         J       READ        . back to main
 
 delete  
-        COMP    TSIZE       . if A >= TSIZE, return;
+        COMP	#14         . Index > TSIZE = 15, exit
+        JGT	exitD
+
+        STL	tmpNL
+        JSUB    chknull
+        LDL	tmpNL
         JEQ     exitD
-        JGT     exitD
 
         STA     tmpA
         STL     tmpL
@@ -319,16 +333,18 @@ ONEDEC
         STA	CNT
         J       READ
 
-find  
-        COMP   TSIZE       . if A >= TSIZE, return;
-        JEQ   exitF
-        JGT   exitF
+find
+        COMP	#14         . Index > TSIZE = 15, exit
+        JGT	exitF
+
+        STL	tmpNL
+        JSUB    chknull
+        LDL	tmpNL	
+        JEQ     exitF
 
         STA     tmpA
         STL     tmpL
 
-        .+JSUB   print       .printf(A)
-        .if this is delete node T register ->1
         +JSUB   push        .push A
         LDA     tmpL
         +JSUB   push        .push L
@@ -371,10 +387,7 @@ NXT
         +JSUB   pop         .pop it self so we can print it out parent(current)
         STA   tmpL
         +JSUB   pop
-        STA   tmpA        .real parent -> tmpA
-
-        . delete 
-        . T register -> 0 if this is Delete Node     
+        STA   tmpA        .real parent -> tmpA   
 
         LDL     tmpL
 exitF   RSUB
@@ -407,14 +420,15 @@ cDELETE BYTE    C'DELETE '
 cLIST   BYTE    C'LIST'
 cFULL   BYTE    C'FULL'
 cNONE   BYTE    C'NONE'
-TREE    BYTE    C'000000000000000'
-TSIZE   WORD    0                   .STORE CURRENT TREE INDEX
+TREE    RESB    15
+TSIZE   WORD    15                   .STORE CURRENT TREE INDEX
 MAXSIZE WORD    15
 TWO     WORD    2
 TMP     RESW    1                   .STORE TMP of Buffer[x]
 
 tmpA    WORD    1
 tmpL    RESW    1
+tmpNL   RESW    1
 gap     RESW    64
 NULL    WORD    0
 wDLT    WORD    0
